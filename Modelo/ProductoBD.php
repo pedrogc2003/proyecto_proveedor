@@ -220,6 +220,44 @@ class ProductoBD {
         }
     }
 
+        // Obtener todos los productos de un proveedor
+        public static function getProductosPorProveedor(Proveedor $proveedor): array {
+            try {
+                // Establecemos la conexión con la base de datos
+                include_once '../Conexion/conexion.php';
+                $conexion = Conexion::obtenerConexion();
+        
+                // Obtenemos el código del proveedor
+                $proveedorCodigo = $proveedor->getCodigo();
+        
+                // Preparamos la consulta SQL
+                $sql = "SELECT * FROM producto WHERE proveedor_codigo = :proveedor_codigo";
+        
+                $sentencia = $conexion->prepare($sql);
+                $sentencia->execute(['proveedor_codigo' => $proveedorCodigo]);
+        
+                $productos = array();
+        
+                while ($fila = $sentencia->fetch(PDO::FETCH_ASSOC)) {
+                    $producto = new Producto();
+                    $producto->setCodigo($fila['codigo']);
+                    $producto->setDescripcion($fila['descripcion']);
+                    $producto->setPrecio($fila['precio']);
+                    $producto->setStock($fila['stock']);
+                    // Puedes cargar el proveedor desde la base de datos o simplemente asignar el código, según tu implementación
+                    $proveedor = new Proveedor();
+                    $proveedor->setCodigo($fila['proveedor_codigo']);
+                    $producto->setMiProveedor($proveedor);
+        
+                    $productos[] = $producto;
+                }
+        
+                return $productos;
+            } catch (PDOException $e) {
+                throw new Exception("Error al obtener productos por proveedor: " . $e->getMessage());
+            }
+        }
+
     
 }
 
