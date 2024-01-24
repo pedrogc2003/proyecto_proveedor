@@ -7,6 +7,14 @@ class Producto {
     private int $stock;
     private Proveedor $miProveedor;
 
+    public function __construct(String $codigo, String $descripcion, float $precio, int $stock, Proveedor $miProveedor){
+        $this->codigo = $codigo;
+        $this->descripcion = $descripcion;
+        $this->precio = $precio;
+        $this->stock = $stock;
+        $this->miProveedor = $miProveedor;   
+    }
+
     // Getter para $codigo
     public function getCodigo(): string {
         return $this->codigo;
