@@ -7,17 +7,11 @@ include_once 'ProveedorBD.php';
 class ProductoBD {
     
     // Insertar un producto nuevo
-    public static function add(Producto $producto, Proveedor $proveedor): bool {
+    public static function add(Producto $producto,$proveedor): bool {
         try {
             // Establecemos la conexión con la base de datos
             include_once '../Conexion/conexion.php';
             $conexion = Conexion::obtenerConexion();
-
-            // Verificar si el proveedor ya existe
-            if (!ProveedorBD::proveedorExiste($proveedor->getCodigo())) {
-                // Proveedor no encontrado, devolver false
-                return false;
-            }
 
             // Verificar si el producto ya existe para este proveedor
             if (self::productoExiste($producto->getCodigo())) {
@@ -30,7 +24,6 @@ class ProductoBD {
             $descripcion = $producto->getDescripcion();
             $precio = $producto->getPrecio();
             $stock = $producto->getStock();
-            $proveedorCodigo = $proveedor->getCodigo(); // Obtener el código directamente
 
             // Preparamos la consulta SQL
             $sql = "INSERT INTO producto (codigo, descripcion, precio, stock, codigo_prov) VALUES (?, ?, ?, ?, ?)";
@@ -41,7 +34,7 @@ class ProductoBD {
             $sentencia->bindParam(2, $descripcion, PDO::PARAM_STR);
             $sentencia->bindParam(3, $precio, PDO::PARAM_STR);
             $sentencia->bindParam(4, $stock, PDO::PARAM_INT);
-            $sentencia->bindParam(5, $proveedorCodigo, PDO::PARAM_STR);
+            $sentencia->bindParam(5, $proveedor, PDO::PARAM_STR);
 
             // Ejecutamos la consulta y devolvemos el resultado
             return $sentencia->execute();
@@ -64,20 +57,17 @@ class ProductoBD {
     }
     
     // Buscar un producto por su descripción (para el proveedor actual)
-    public static function buscarProductoPorDescripcion(Proveedor $proveedor, $descripcion): ?Producto {
+    public static function buscarProductoPorDescripcion($proveedor, $descripcion): ?Producto {
         try {
             // Establecemos la conexión con la base de datos
             include_once '../Conexion/conexion.php';
             $conexion = Conexion::obtenerConexion();
     
-            // Obtenemos el ID del proveedor
-            $proveedorId = $proveedor->getCodigo(); // Asumiendo que existe un método getCodigo() en la clase Proveedor
-    
             // Preparamos la consulta SQL
             $sql = "SELECT * FROM producto WHERE codigo_prov = :codigo_prov AND descripcion = :descripcion";
     
             $sentencia = $conexion->prepare($sql);
-            $sentencia->execute(['codigo_prov' => $proveedorId, 'descripcion' => $descripcion]);
+            $sentencia->execute(['codigo_prov' => $proveedor, 'descripcion' => $descripcion]);
     
             $productoEncontrado = $sentencia->fetch(PDO::FETCH_ASSOC);
     
@@ -101,17 +91,11 @@ class ProductoBD {
     }
 
     // Modificar un producto en la base de datos
-    public static function modificarProducto(Producto $producto): bool {
+    public static function modificarProducto(Producto $producto, $proveedor): bool {
         try {
             // Establecemos la conexión con la base de datos
             include_once '../Conexion/conexion.php';
             $conexion = Conexion::obtenerConexion();
-
-            // Verificar si el producto pertenece al proveedor
-            if ($producto->getMiProveedor()->getCodigo() !== self::getProveedorCodigoByProductoCodigo($producto->getCodigo())) {
-                // Producto no pertenece al proveedor, no se puede modificar
-                return false;
-            }
 
             // Obtenemos los valores del producto
             $codigo = $producto->getCodigo();
@@ -128,8 +112,7 @@ class ProductoBD {
             $sentencia->bindParam(2, $precio, PDO::PARAM_STR);
             $sentencia->bindParam(3, $stock, PDO::PARAM_INT);
             $sentencia->bindParam(4, $codigo, PDO::PARAM_STR);
-            $proveedorCodigo = $producto->getMiProveedor()->getCodigo();
-            $sentencia->bindParam(5, $proveedorCodigo, PDO::PARAM_STR);
+            $sentencia->bindParam(5, $proveedor, PDO::PARAM_STR);
 
 
             // Ejecutamos la consulta y devolvemos el resultado
@@ -139,72 +122,48 @@ class ProductoBD {
         }
     }
 
-    // Obtener el ID del proveedor al que pertenece un producto
-    private static function getProveedorCodigoByProductoCodigo($productoCodigo): ?string {
+    public static function borrarProducto(Producto $producto, $proveedor): bool {
         try {
             // Establecemos la conexión con la base de datos
             include_once '../Conexion/conexion.php';
             $conexion = Conexion::obtenerConexion();
-
-            // Preparamos la consulta SQL
-            $sql = "SELECT codigo_prov FROM producto WHERE codigo = ?";
-
-            $sentencia = $conexion->prepare($sql);
-            $sentencia->bindParam(1, $productoCodigo, PDO::PARAM_STR);
-            $sentencia->execute();
-
-            $fila = $sentencia->fetch(PDO::FETCH_ASSOC);
-
-            return ($fila) ? $fila['codigo_prov'] : null;
-        } catch (PDOException $e) {
-            throw new Exception("Error al obtener el código del proveedor: " . $e->getMessage());
-        }
-    }
-
-    public static function borrarProducto(Producto $producto): bool {
-        try {
-            // Establecemos la conexión con la base de datos
-            include_once '../Conexion/conexion.php';
-            $conexion = Conexion::obtenerConexion();
-
-            // Verificar si el producto pertenece al proveedor
-            if ($producto->getMiProveedor()->getCodigo() !== self::getProveedorCodigoByProductoCodigo($producto->getCodigo())) {
-                // Producto no pertenece al proveedor, no se puede borrar
-                return false;
-            }
-
+    
             // Obtenemos el código del producto
             $codigo = $producto->getCodigo();
-
+    
             // Preparamos la consulta SQL
-            $sql = "DELETE FROM producto WHERE codigo = ?";
-
+            $sql = "DELETE FROM producto WHERE codigo = :codigo AND codigo_prov = :codigo_prov";
+    
             $sentencia = $conexion->prepare($sql);
-
-            $sentencia->bindParam(1, $codigo, PDO::PARAM_STR);
-
+            $sentencia->bindParam(':codigo', $codigo, PDO::PARAM_STR);
+            $sentencia->bindParam(':codigo_prov', $proveedor, PDO::PARAM_STR);
+    
             // Ejecutamos la consulta y devolvemos el resultado
-            return $sentencia->execute();
+            $resultado = $sentencia->execute();
+    
+            // Cerramos la conexión
+            $conexion = null;
+    
+            return $resultado;
         } catch (PDOException $e) {
+            // Manejo de errores (puedes personalizar el manejo según tus necesidades)
             throw new Exception("Error al borrar producto: " . $e->getMessage());
         }
     }
+    
 
     // Mostrar una lista de productos por debajo de un stock específico
-    public static function listarProductosBajoStock(Proveedor $proveedor, $stockPedido): array {
+    public static function listarProductosBajoStock($proveedor, $stockPedido): array {
         try {
             // Establecemos la conexión con la base de datos
             include_once '../Conexion/conexion.php';
             $conexion = Conexion::obtenerConexion();
     
-            // Obtenemos el código del proveedor
-            $proveedorCodigo = $proveedor->getCodigo();
-    
             // Preparamos la consulta SQL
-            $sql = "SELECT * FROM producto WHERE codigo_prov = :codigo_prov AND stock < :stock_pedido";
+            $sql = "SELECT * FROM producto WHERE codigo_prov = :codigo_prov AND stock <= :stock_pedido";
     
             $sentencia = $conexion->prepare($sql);
-            $sentencia->execute(['codigo_prov' => $proveedorCodigo, 'stock_pedido' => $stockPedido]);
+            $sentencia->execute(['codigo_prov' => $proveedor, 'stock_pedido' => $stockPedido]);
     
             $productos = array();
     
@@ -227,21 +186,18 @@ class ProductoBD {
         }
     }
 
-    // Obtener todos los productos de un proveedor
-    public static function getProductosPorProveedor(Proveedor $proveedor): array {
+    public static function getProductosPorProveedor($proveedor): array {
         try {
             // Establecemos la conexión con la base de datos
             include_once '../Conexion/conexion.php';
             $conexion = Conexion::obtenerConexion();
     
-            // Obtenemos el código del proveedor
-            $proveedorCodigo = $proveedor->getCodigo();
-    
             // Preparamos la consulta SQL
             $sql = "SELECT * FROM producto WHERE codigo_prov = :codigo_prov";
     
             $sentencia = $conexion->prepare($sql);
-            $sentencia->execute(['codigo_prov' => $proveedorCodigo]);
+            $sentencia->bindParam(':codigo_prov', $proveedor);
+            $sentencia->execute();
     
             $productos = array();
     
@@ -252,7 +208,7 @@ class ProductoBD {
                     $fila['descripcion'],
                     $fila['precio'],
                     $fila['stock'],
-                    $proveedor // Pasar la instancia de Proveedor directamente
+                    $proveedor // Pasar el código del proveedor directamente
                 );
     
                 $productos[] = $producto;
@@ -262,7 +218,7 @@ class ProductoBD {
         } catch (PDOException $e) {
             throw new Exception("Error al obtener productos por proveedor: " . $e->getMessage());
         }
-    }
-}
+    }    
+}   
 
 ?>

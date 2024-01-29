@@ -5,9 +5,9 @@ class Producto {
     private string $descripcion;
     private float $precio;
     private int $stock;
-    private Proveedor $miProveedor;
+    private $miProveedor;
 
-    public function __construct(String $codigo, String $descripcion, float $precio, int $stock, Proveedor $miProveedor){
+    public function __construct(String $codigo, String $descripcion, float $precio, int $stock, $miProveedor){
         $this->codigo = $codigo;
         $this->descripcion = $descripcion;
         $this->precio = $precio;
@@ -56,12 +56,12 @@ class Producto {
     }
 
     // Getter para $miProveedor
-    public function getMiProveedor(): Proveedor {
+    public function getMiProveedor() {
         return $this->miProveedor;
     }
 
     // Setter para $miProveedor
-    public function setMiProveedor(Proveedor $miProveedor): void {
+    public function setMiProveedor($miProveedor): void {
         $this->miProveedor = $miProveedor;
     }
 }

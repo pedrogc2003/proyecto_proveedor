@@ -1,6 +1,7 @@
 <?php
 
 include_once 'Proveedor.php';
+include_once 'ProductoBD.php';
 
 class ProveedorBD {
     
@@ -77,7 +78,11 @@ class ProveedorBD {
             // Verificar si se encontró un proveedor
             if ($proveedorEncontrado && password_verify($pwd, $proveedorEncontrado['pwd'])) {
                 // Devolver un objeto Proveedor
-                return new Proveedor($proveedorEncontrado['codigo'], $proveedorEncontrado['pwd'], $proveedorEncontrado['correo'], $proveedorEncontrado['nombre']);
+                $proveedor = new Proveedor($proveedorEncontrado['codigo'], $proveedorEncontrado['pwd'], $proveedorEncontrado['correo'], $proveedorEncontrado['nombre']);
+                $productos = ProductoBD::getProductosPorProveedor($proveedor->getCodigo());
+                $proveedor->setMisProductos($productos);
+                return $proveedor;
+               
             }
     
             return null; // Proveedor no encontrado o contraseña incorrecta
@@ -101,34 +106,23 @@ class ProveedorBD {
     
             // Obtenemos los valores del proveedor
             $codigo = $proveedor->getCodigo();
-            $pwd = $proveedor->getPwd();
             $correo = $proveedor->getCorreo();
             $nombre = $proveedor->getNombre();
-    
-            // Hash de la nueva contraseña si se proporciona
-            if ($pwd !== null) {
-                $hashedPwd = password_hash($pwd, PASSWORD_DEFAULT);
-            }
+            $contrasena = $proveedor->getPwd();
     
             // Preparamos la consulta SQL
-            $sql = "UPDATE proveedor SET correo = ?, nombre = ?";
-            $parametros = [$correo, $nombre];
-    
-            // Agregamos la actualización de la contraseña si se proporciona
-            if (isset($hashedPwd)) {
-                $sql .= ", pwd = ?";
-                $parametros[] = $hashedPwd;
-            }
-    
-            $sql .= " WHERE codigo = ?";
-            $parametros[] = $codigo;
-    
+            $sql = "UPDATE proveedor SET  pwd = ?, correo = ?, nombre = ? WHERE codigo = ?";
+
             $sentencia = $conexion->prepare($sql);
+
+            // Hash de la contraseña
+            $hashedPwd = password_hash($contrasena, PASSWORD_DEFAULT);
     
             // Bind de parámetros
-            foreach ($parametros as $i => $parametro) {
-                $sentencia->bindValue($i + 1, $parametro, (is_int($parametro) ? PDO::PARAM_INT : PDO::PARAM_STR));
-            }
+            $sentencia->bindParam(2, $correo, PDO::PARAM_STR);
+            $sentencia->bindParam(1, $hashedPwd, PDO::PARAM_STR);
+            $sentencia->bindParam(3, $nombre, PDO::PARAM_STR);
+            $sentencia->bindParam(4, $codigo, PDO::PARAM_STR);
     
             // Ejecutamos la consulta y devolvemos el resultado
             return $sentencia->execute();
@@ -137,6 +131,7 @@ class ProveedorBD {
             throw new PDOException("Error al actualizar proveedor: " . $e->getMessage());
         }
     }
+    
 }
 
 ?>
